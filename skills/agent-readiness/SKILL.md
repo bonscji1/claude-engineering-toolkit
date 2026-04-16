@@ -2,6 +2,7 @@
 name: agent-readiness
 description: Assess and improve a repository's readiness for AI-assisted development. Use when asked about agent-readiness, AI setup, documentation structure, AGENTS.md, CLAUDE.md, or guideline files.
 compatibility: Step 8 (PR creation) requires git and gh CLI to be installed
+allowed-tools: Read
 ---
 
 Assess the current repository's readiness for AI-assisted development, then offer to improve it step by step. $ARGUMENTS
