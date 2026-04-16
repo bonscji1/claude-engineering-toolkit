@@ -1,0 +1,17 @@
+# Default domain list for guideline generation
+# These are merged with any domains already listed in AGENTS.md
+domains:
+  - name: security
+    description: Security patterns, authentication, authorization
+  - name: performance
+    description: Performance optimization, concurrency, thread safety, resource contention
+  - name: error-handling
+    description: Error handling patterns and propagation
+  - name: api-contracts
+    description: API design, REST conventions, versioning
+  - name: database
+    description: Schema design, query patterns, migrations
+  - name: testing
+    description: Test patterns, coverage, test organization
+  - name: integration
+    description: Integration patterns, external services, webhooks
