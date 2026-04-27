@@ -1,0 +1,16 @@
+{
+  "channels": [
+    {
+      "name": "#prod-alerts",
+      "id": "C01ABC123",
+      "lastChecked": "2026-04-01T00:00:00Z",
+      "ignoreListFile": "prod-alerts.md"
+    },
+    {
+      "name": "#stage-alerts",
+      "id": "C01DEF456",
+      "lastChecked": "2026-04-01T00:00:00Z",
+      "ignoreListFile": "stage-alerts.md"
+    }
+  ]
+}

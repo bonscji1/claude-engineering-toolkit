@@ -1,0 +1,52 @@
+{
+  "permissionPolicies": [
+    {
+      "tool": "Bash",
+      "allow": [
+        "python3 */filter-slack-channel/scripts/*.py *",
+        "python3 scripts/*.py *",
+        "echo * | python3 */filter-slack-channel/scripts/*.py *",
+        "echo * | python3 scripts/*.py *",
+        "date -u +%Y-%m-%dT%H:%M:%SZ",
+        "date -u *",
+        "rm -f /tmp/slack_result_*.json",
+        "cat > /tmp/slack_result_*.json",
+        "python3 -c * | python3 */filter-slack-channel/scripts/*.py *",
+        "python3 -c * | python3 scripts/*.py *",
+        "* | jq *"
+      ]
+    },
+    {
+      "tool": "Read",
+      "allow": [
+        "*/filter-slack-channel/config/**",
+        "*/filter-slack-channel/scripts/**"
+      ]
+    },
+    {
+      "tool": "Write",
+      "allow": [
+        "*/filter-slack-channel/config/ignore-lists/*.md"
+      ]
+    },
+    {
+      "tool": "Edit",
+      "allow": [
+        "*/filter-slack-channel/config/channels.json",
+        "*/filter-slack-channel/config/ignore-lists/*.md"
+      ]
+    },
+    {
+      "tool": "mcp__slack__get_channel_history",
+      "allow": ["*"]
+    },
+    {
+      "tool": "mcp__slack__get_channel_id_by_name",
+      "allow": ["*"]
+    },
+    {
+      "tool": "mcp__slack__list_joined_channels",
+      "allow": ["*"]
+    }
+  ]
+}
