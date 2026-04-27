@@ -7,7 +7,8 @@ Filter and manage Slack alert messages with channel-specific ignore lists.
 This skill helps you manage alert fatigue by:
 - Fetching new messages from configured Slack channels
 - Filtering out known non-actionable messages
-- Deduplicating repeated messages (shows each unique message once)
+- Deduplicating repeated messages (shows each unique message once with count)
+- Generating clickable links to jump directly to messages in Slack
 - Maintaining channel-specific ignore lists with documented reasons
 - Tracking what you've already checked (stateful)
 
@@ -56,6 +57,7 @@ Or create `skills/filter-slack-channel/config/channels.json` manually:
 
 ```json
 {
+  "workspaceDomain": "mycompany",
   "channels": [
     {
       "name": "#prod-alerts",
@@ -72,6 +74,12 @@ Or create `skills/filter-slack-channel/config/channels.json` manually:
   ]
 }
 ```
+
+**Workspace domain (optional):**
+- Set `workspaceDomain` to your Slack workspace subdomain (e.g., "mycompany" for mycompany.slack.com)
+- If provided, messages will include clickable links to jump directly to the Slack message
+- Find your workspace domain from your Slack URL: `https://WORKSPACEDOMAIN.slack.com/`
+- If omitted, messages will be displayed without links
 
 **Finding channel IDs:**
 - Use Slack MCP's `mcp__slack__get_channel_id_by_name` tool
@@ -172,14 +180,17 @@ Ignore list: config/ignore-lists/prod-alerts.md (5 patterns)
 
 Issues (Page 1 of 2):
 
-1. "Database connection pool exhausted" (appeared 15 times)
-   First seen: 2026-04-22 10:30:15 UTC
+1. [@Database connection pool exhausted] (appeared 15 times)
+First seen: 2026-04-22 10:30:15 UTC
+Link: https://mycompany.slack.com/archives/C01ABC123/p1713786615000000?cid=C01ABC123
 
-2. "High memory usage on node-5" (appeared 8 times)
-   First seen: 2026-04-22 11:45:22 UTC
+2. [@High memory usage on node-5] (appeared 8 times)
+First seen: 2026-04-22 11:45:22 UTC
+Link: https://mycompany.slack.com/archives/C01ABC123/p1713791122000000?cid=C01ABC123
 
-3. "API timeout on /users endpoint" (appeared 3 times)
-   First seen: 2026-04-22 14:20:10 UTC
+3. [@API timeout on /users endpoint] (appeared 3 times)
+First seen: 2026-04-22 14:20:10 UTC
+Link: https://mycompany.slack.com/archives/C01ABC123/p1713800410000000?cid=C01ABC123
 
 ... (17 more messages)
 

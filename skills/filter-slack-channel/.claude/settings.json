@@ -3,17 +3,17 @@
     {
       "tool": "Bash",
       "allow": [
-        "python3 */filter-slack-channel/scripts/*.py *",
+        "python3 *filter-slack-channel/scripts/*.py *",
         "python3 scripts/*.py *",
-        "echo * | python3 */filter-slack-channel/scripts/*.py *",
+        "echo * | python3 *filter-slack-channel/scripts/*.py *",
         "echo * | python3 scripts/*.py *",
-        "date -u +%Y-%m-%dT%H:%M:%SZ",
-        "date -u *",
-        "rm -f /tmp/slack_result_*.json",
-        "cat > /tmp/slack_result_*.json",
-        "python3 -c * | python3 */filter-slack-channel/scripts/*.py *",
+        "python3 -c * | python3 *filter-slack-channel/scripts/*.py *",
         "python3 -c * | python3 scripts/*.py *",
-        "* | jq *"
+        "date *",
+        "rm /tmp/*",
+        "cat > /tmp/*",
+        "jq *",
+        "echo *"
       ]
     },
     {
@@ -46,6 +46,10 @@
     },
     {
       "tool": "mcp__slack__list_joined_channels",
+      "allow": ["*"]
+    },
+    {
+      "tool": "mcp__slack__whoami",
       "allow": ["*"]
     }
   ]

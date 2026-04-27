@@ -62,6 +62,7 @@ If `channels.json` doesn't exist, show an error with setup instructions:
 ```
 No channels configured. Create skills/filter-slack-channel/config/channels.json with:
 {
+  "workspaceDomain": "mycompany",
   "channels": [
     {
       "name": "#your-channel",
@@ -72,9 +73,68 @@ No channels configured. Create skills/filter-slack-channel/config/channels.json 
   ]
 }
 
-Find channel IDs using: Slack MCP list_channels tool
-The ignoreListFile field specifies the filename in config/ignore-lists/ for this channel's ignore list.
+Fields:
+- workspaceDomain: Your Slack workspace subdomain (e.g., "mycompany" for mycompany.slack.com)
+  - Optional: If omitted, message links will not be generated
+  - Find your workspace domain from your Slack URL: https://WORKSPACEDOMAIN.slack.com/
+- name: Channel name with # prefix
+- id: Channel ID (find using Slack MCP list_channels tool or from channel URL)
+- lastChecked: ISO 8601 timestamp of last check
+- ignoreListFile: Filename in config/ignore-lists/ for this channel's ignore list
 ```
+
+### 1.5. Get Workspace Domain
+
+Fetch the Slack workspace domain needed for message links.
+
+**Approach 1: Check channels.json for workspaceDomain field**
+
+```bash
+WORKSPACE_DOMAIN=$(jq -r '.workspaceDomain // empty' skills/filter-slack-channel/config/channels.json 2>/dev/null)
+```
+
+**Approach 2 (fallback): Try Slack MCP whoami**
+
+If not found in config, try the Slack MCP:
+
+```bash
+if [ -z "$WORKSPACE_DOMAIN" ]; then
+  # Try whoami tool - some Slack MCP implementations may provide team info
+  if WHOAMI_RESULT=$(echo '{}' | mcp__slack__whoami 2>/dev/null); then
+    # Try different possible response structures
+    WORKSPACE_DOMAIN=$(echo "$WHOAMI_RESULT" | jq -r '.team.domain // .domain // empty' 2>/dev/null)
+  fi
+fi
+```
+
+**Error handling:**
+- If both approaches fail, set `WORKSPACE_DOMAIN=""` and continue without links
+- Links will only be added to messages if workspace domain is available
+
+**To configure workspace domain:**
+
+Add `workspaceDomain` field to the root of `channels.json`:
+
+```json
+{
+  "workspaceDomain": "mycompany",
+  "channels": [
+    {
+      "name": "#your-channel",
+      "id": "C123456",
+      "lastChecked": "2026-01-01T00:00:00Z",
+      "ignoreListFile": "your-channel.md"
+    }
+  ]
+}
+```
+
+**Output:** Workspace domain string (e.g., "mycompany" for mycompany.slack.com) or empty string if unavailable
+
+**Rationale:**
+- Configuration-based approach is most reliable and explicit
+- Slack MCP fallback provides convenience when available  
+- Graceful degradation ensures skill works even without links
 
 ### 2. Parse Arguments
 
@@ -231,15 +291,56 @@ If there are messages to show, display them in **pages of 20 messages** with an 
 
 **IMPORTANT:** Display messages in pages, sorted by occurrence count (most frequent first), then by timestamp (most recent first).
 
+**Link Construction:**
+
+For each message, construct a clickable Slack link if workspace domain is available:
+
+```bash
+# Extract message data from FILTER_RESULT JSON
+MESSAGE_TEXT="..."      # From unique_messages[i].text
+UNIX_TIMESTAMP="..."    # From unique_messages[i].timestamp (e.g., "1777290266.083699")
+FORMATTED_TIME="..."    # From unique_messages[i].formatted_timestamp
+COUNT="..."             # From unique_messages[i].count
+
+# Convert timestamp: 1777290266.083699 → p1777290266083699
+PERMALINK_TS=$(echo "$UNIX_TIMESTAMP" | sed 's/\.//g; s/^/p/')
+
+# Build Slack message URL
+if [ -n "$WORKSPACE_DOMAIN" ]; then
+  SLACK_URL="https://${WORKSPACE_DOMAIN}.slack.com/archives/${CHANNEL_ID}/${PERMALINK_TS}?cid=${CHANNEL_ID}"
+  # Display with link on separate line
+  echo "N. [$MESSAGE_TEXT] (appeared $COUNT times)"
+  echo "First seen: $FORMATTED_TIME"
+  echo "Link: $SLACK_URL"
+  echo ""  # Empty line between messages
+else
+  # Fallback to plain text if workspace domain unavailable (current format)
+  echo "N. \"$MESSAGE_TEXT\" (appeared $COUNT times)"
+  echo "   First seen: $FORMATTED_TIME"
+  echo ""  # Empty line between messages
+fi
+```
+
+**Display format:**
+- **With workspace domain:**
+  ```
+  N. [message text] (appeared X times)
+  First seen: YYYY-MM-DD HH:MM:SS UTC
+  Link: slack_url
+  ```
+- **Without workspace domain:** `N. "message text" (appeared X times)` (current format with indented timestamp)
+
 **Format per page:**
 ```
 Issues (Page N of M):
 
-1. "@Sentry: [app] Connection timeout" (appeared 15 times)
-   First seen: 2026-04-22 10:30:15 UTC
+1. [@Sentry: [app] Connection timeout] (appeared 15 times)
+First seen: 2026-04-22 10:30:15 UTC
+Link: https://mycompany.slack.com/archives/C025EM2K133/p1777290266083699?cid=C025EM2K133
 
-2. "@Sentry: [app] Invalid API key" (appeared 3 times)
-   First seen: 2026-04-22 11:45:22 UTC
+2. [@Sentry: [app] Invalid API key] (appeared 3 times)
+First seen: 2026-04-22 11:45:22 UTC
+Link: https://mycompany.slack.com/archives/C025EM2K133/p1777285841894789?cid=C025EM2K133
 
 ... (up to 20 messages per page)
 
@@ -249,6 +350,12 @@ To add issues to ignore list, type in the text field:
   Example: 1. testing noise, not production
   Multiple: 1. testing noise, 3. known issue tracked in JIRA-123
 ```
+
+**Note:**
+- Message text is wrapped in square brackets `[...]` (not Markdown link syntax)
+- Link appears on separate line with "Link: " prefix
+- No indentation on "First seen:" and "Link:" lines
+- Empty line between messages for readability
 
 **Do not truncate long messages** - show the full text even if it's multiple lines. The user needs complete information to decide if it should be ignored.
 

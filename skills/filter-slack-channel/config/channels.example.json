@@ -1,4 +1,5 @@
 {
+  "workspaceDomain": "mycompany",
   "channels": [
     {
       "name": "#prod-alerts",
