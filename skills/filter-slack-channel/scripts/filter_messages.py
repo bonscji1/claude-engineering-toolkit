@@ -20,6 +20,30 @@ from typing import List, Dict, Tuple, Set
 from pathlib import Path
 
 
+def normalize_message(text: str) -> str:
+    """
+    Normalize message text by stripping variable patterns.
+
+    This includes:
+    - Thread IDs: [thread:xxx]
+    - Session IDs after "Mcp session not found: "
+
+    Args:
+        text: Message text to normalize
+
+    Returns:
+        Normalized message text
+    """
+    # Strip thread pattern
+    text = re.sub(r'\s*\[thread:[^\]]+\]', '', text)
+
+    # Strip session IDs from "Mcp session not found:" messages
+    # Pattern: "Mcp session not found: <session_id>" → "Mcp session not found:"
+    text = re.sub(r'(Mcp session not found:)\s*[^\s]+', r'\1', text)
+
+    return text
+
+
 def extract_message_parts(msg: str) -> Tuple[str, str, str]:
     """
     Extract timestamp and message text from Slack message format.
@@ -28,15 +52,15 @@ def extract_message_parts(msg: str) -> Tuple[str, str, str]:
         msg: Message in format "[timestamp] text [thread:xxx]"
 
     Returns:
-        Tuple of (timestamp, full_text_with_thread, text_without_thread)
+        Tuple of (timestamp, full_text_with_thread, text_normalized)
     """
     match = re.match(r'\[([\d.]+)\] (.+)', msg)
     if match:
         timestamp = match.group(1)
         text = match.group(2)
-        # Strip thread pattern for matching
-        text_no_thread = re.sub(r'\s*\[thread:[^\]]+\]', '', text)
-        return timestamp, text, text_no_thread
+        # Normalize text for matching
+        text_normalized = normalize_message(text)
+        return timestamp, text, text_normalized
     return '', msg, msg
 
 
@@ -71,9 +95,9 @@ def parse_ignore_list(file_path: str) -> Tuple[List[str], List[str]]:
                 match = re.match(r'^- "(.+)" - Reason: (.+) - Last seen: (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)$', line)
                 if match:
                     ignore_text = match.group(1)
-                    # Strip thread pattern from ignore list entry too
-                    ignore_text_no_thread = re.sub(r'\s*\[thread:[^\]]+\]', '', ignore_text)
-                    active_ignores.append(ignore_text_no_thread)
+                    # Normalize ignore list entry (strip threads, session IDs, etc.)
+                    ignore_text_normalized = normalize_message(ignore_text)
+                    active_ignores.append(ignore_text_normalized)
 
         elif section.startswith('Disabled Ignores'):
             # Extract disabled ignore patterns
@@ -82,8 +106,8 @@ def parse_ignore_list(file_path: str) -> Tuple[List[str], List[str]]:
                 match = re.match(r'^<!-- - "(.+?)" - Reason:', line)
                 if match:
                     ignore_text = match.group(1)
-                    ignore_text_no_thread = re.sub(r'\s*\[thread:[^\]]+\]', '', ignore_text)
-                    disabled_ignores.append(ignore_text_no_thread)
+                    ignore_text_normalized = normalize_message(ignore_text)
+                    disabled_ignores.append(ignore_text_normalized)
 
     return active_ignores, disabled_ignores
 
