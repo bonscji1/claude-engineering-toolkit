@@ -112,13 +112,55 @@ def parse_ignore_list(file_path: str) -> Tuple[List[str], List[str]]:
     return active_ignores, disabled_ignores
 
 
+def wildcard_to_regex(pattern: str) -> re.Pattern:
+    """
+    Convert a wildcard pattern to a compiled regex pattern.
+
+    Wildcards:
+    - '*' matches any characters (greedy)
+
+    Args:
+        pattern: Pattern string with optional '*' wildcards
+
+    Returns:
+        Compiled regex pattern
+    """
+    # Escape all regex special chars except our wildcard
+    escaped = re.escape(pattern)
+    # Replace escaped \* with .* for wildcard matching
+    regex_pattern = escaped.replace(r'\*', '.*')
+    # Anchor to match the entire string
+    regex_pattern = f'^{regex_pattern}$'
+    return re.compile(regex_pattern)
+
+
+def matches_pattern(text: str, pattern: str, is_regex: bool, compiled_pattern: re.Pattern = None) -> bool:
+    """
+    Check if text matches a pattern (either exact or wildcard/regex).
+
+    Args:
+        text: Text to match
+        pattern: Pattern to match against
+        is_regex: Whether pattern contains wildcards (use regex matching)
+        compiled_pattern: Pre-compiled regex pattern (if is_regex is True)
+
+    Returns:
+        True if text matches pattern
+    """
+    if is_regex:
+        return compiled_pattern.match(text) is not None
+    else:
+        return text == pattern
+
+
 def filter_and_deduplicate(messages: List[str], active_ignores: List[str]) -> Tuple[List[Dict], int, Set[str]]:
     """
     Filter and deduplicate messages.
 
     Args:
         messages: List of Slack messages
-        active_ignores: List of active ignore patterns (already stripped of thread IDs)
+        active_ignores: List of active ignore patterns (already normalized)
+                       Patterns may contain '*' wildcards
 
     Returns:
         Tuple of (unique_messages, ignored_count, matched_ignores)
@@ -130,16 +172,23 @@ def filter_and_deduplicate(messages: List[str], active_ignores: List[str]) -> Tu
     ignored_count = 0
     matched_ignores = set()
 
+    # Pre-compile wildcard patterns for efficiency
+    compiled_patterns = []
+    for pattern in active_ignores:
+        is_wildcard = '*' in pattern
+        compiled_pattern = wildcard_to_regex(pattern) if is_wildcard else None
+        compiled_patterns.append((pattern, is_wildcard, compiled_pattern))
+
     for msg in messages:
         timestamp, full_text, stripped_text = extract_message_parts(msg)
 
         # Check if this message should be ignored
         is_ignored = False
-        for ignore_pattern in active_ignores:
-            if stripped_text == ignore_pattern:
+        for pattern, is_wildcard, compiled_pattern in compiled_patterns:
+            if matches_pattern(stripped_text, pattern, is_wildcard, compiled_pattern):
                 is_ignored = True
                 ignored_count += 1
-                matched_ignores.add(ignore_pattern)
+                matched_ignores.add(pattern)
                 break
 
         if is_ignored:

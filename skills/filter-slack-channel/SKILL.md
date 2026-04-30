@@ -10,13 +10,13 @@ This skill helps you manage alert fatigue by filtering out known non-actionable 
 ## Helper Scripts
 
 This skill uses Python helper scripts for deterministic operations (see `scripts/README.md` for details):
-- `scripts/filter_messages.py` - Filters and deduplicates messages against ignore lists
+- `scripts/filter_messages.py` - Filters and deduplicates messages against ignore lists with wildcard pattern support
 - `scripts/manage_ignore_list.py` - Updates timestamps and disables stale ignore entries
 - `scripts/detect_regressions.py` - Checks if messages match disabled ignore entries
 - `scripts/update_channels_config.py` - Updates lastChecked timestamps in channels.json
 - `scripts/ensure_ignore_list.py` - Auto-creates ignore list files if missing
 
-These scripts handle complex logic like thread ID stripping, deduplication, regression detection, and atomic JSON updates, making the workflow cleaner and more maintainable.
+These scripts handle complex logic like thread ID stripping, session ID normalization, wildcard pattern matching, deduplication, regression detection, and atomic JSON updates, making the workflow cleaner and more maintainable.
 
 **IMPORTANT: Data handling strategy to avoid escaping issues and reduce token usage**
 
@@ -238,6 +238,51 @@ For the current channel being processed:
   - `"Error: Connection failed [thread:67890]"`
   - `"Error: Connection failed"`
 
+**Wildcard Pattern Support:**
+- Use `*` in ignore patterns to match any characters at that position
+- Wildcards enable flexible matching for variable content (session IDs, record IDs, service names, etc.)
+- The filter script converts wildcard patterns to regex for matching
+
+**Common use cases:**
+
+1. **Ignore variable IDs/tokens:**
+   ```
+   "Session expired: *"
+   ```
+   Matches:
+   - `"Session expired: abc123def456"`
+   - `"Session expired: xyz789uvw"`
+   - `"Session expired: <any-session-id>"`
+
+2. **Ignore errors from any service:**
+   ```
+   "@Monitor: [*] Database connection timeout"
+   ```
+   Matches:
+   - `"@Monitor: [auth-service] Database connection timeout"`
+   - `"@Monitor: [payment-service] Database connection timeout"`
+   - `"@Monitor: [api-gateway] Database connection timeout"`
+
+3. **Multiple wildcards in one pattern:**
+   ```
+   "Request * failed with status code *"
+   ```
+   Matches any request ID AND any status code in the error message.
+
+4. **Combine exact matching with wildcards:**
+   ```
+   "@Monitor: [*] Metric already registered: http_requests_total"
+   ```
+   - Service: wildcard (`[*]`) - matches any service name
+   - Error message: exact - only matches this specific metric registration
+   - Metric name: exact (`http_requests_total`) - only matches this metric
+
+**Important notes:**
+- Wildcards match greedily (as much as possible)
+- Use wildcards strategically - be as specific as possible to avoid over-filtering
+- Exact matches (no wildcards) are more efficient than wildcard patterns
+- When adding ignores, decide which parts should be wildcarded based on what varies vs. what's constant
+
 #### c) Filter and Deduplicate Messages
 
 Use the `filter_messages.py` helper script to process messages from the temp file:
@@ -266,9 +311,12 @@ This approach:
 - `disabled_ignore_count`: Number of disabled ignore patterns
 
 **What the script does:**
-- Strips `[thread:...]` patterns from messages and ignore entries for matching
+- Normalizes messages by stripping variable patterns:
+  - Strips `[thread:...]` patterns from messages and ignore entries
+  - Normalizes variable IDs in common patterns (session IDs, request IDs, etc.)
+- Supports wildcard patterns (`*`) for flexible matching of variable content
 - Deduplicates messages (counts multiple occurrences)
-- Filters out messages matching active ignore patterns
+- Filters out messages matching active ignore patterns (exact or wildcard)
 - Tracks which ignore patterns matched (for "Last seen" timestamp updates)
 
 #### d) Display Results and Interactive Add to Ignore List
@@ -334,11 +382,11 @@ fi
 ```
 Issues (Page N of M):
 
-1. [@Sentry: [app] Connection timeout] (appeared 15 times)
+1. [@Monitor: [payment-service] Database connection timeout] (appeared 15 times)
 First seen: 2026-04-22 10:30:15 UTC
 Link: https://mycompany.slack.com/archives/C025EM2K133/p1777290266083699?cid=C025EM2K133
 
-2. [@Sentry: [app] Invalid API key] (appeared 3 times)
+2. [@Monitor: [auth-service] Invalid API key in request] (appeared 3 times)
 First seen: 2026-04-22 11:45:22 UTC
 Link: https://mycompany.slack.com/archives/C025EM2K133/p1777285841894789?cid=C025EM2K133
 
@@ -349,6 +397,11 @@ To add issues to ignore list, type in the text field:
   Format: <number>. <reason>
   Example: 1. testing noise, not production
   Multiple: 1. testing noise, 3. known issue tracked in JIRA-123
+
+Wildcard tip: After adding, you can manually edit the ignore list to use wildcards:
+  - Replace variable parts with * (session IDs, record IDs, etc.)
+  - Example: "Session expired: abc123" → "Session expired: *"
+  - Example: "@Monitor: [payment-service] Error" → "@Monitor: [*] Error" (any service)
 ```
 
 **Note:**
@@ -562,7 +615,8 @@ Specific error scenarios:
 - **Menu-driven interaction**: Use `AskUserQuestion` with 4 options: "Choose issues to ignore" | "Next page" | "Previous page" | "Finished". The "Other" field is always available for typing commands.
 - **Dual input methods**: Users can select "Choose issues to ignore" OR type directly in Other field - both work the same way
 - **Sort messages**: By count (descending) then timestamp (descending) for better visibility of recurring issues
-- **Preserve exact message text**: When adding to ignore lists, strip `[thread:...]` but preserve everything else
+- **Preserve exact message text**: When adding to ignore lists, strip `[thread:...]` but preserve everything else (wildcards can be added manually after)
+- **Wildcard patterns**: Users can manually edit ignore list files to replace variable parts with `*` for flexible matching. Examples: `"Mcp session not found: *"` matches any session, `"@Sentry: [*] Error"` matches error from any service
 - **Use UTC timestamps consistently**
 - **Sanitize channel names** consistently for file paths
 - **Don't skip channels silently** - always report what happened

@@ -1,5 +1,21 @@
 # Ignore List for #example-channel
 
+<!--
+**Wildcard patterns:** Use `*` to match any characters in variable content.
+
+**Examples:**
+- `"Session expired: *"` - Matches any session ID after "Session expired: "
+- `"@Monitor: [*] Database timeout"` - Matches the error from any service name
+- `"Record not found: * in table users"` - Matches any record ID
+- `"Error code *: Connection refused"` - Matches any error code number
+
+**When to use wildcards:**
+- Session IDs, request IDs, user IDs that change each occurrence
+- Service names when the same error occurs across multiple services
+- Dynamic values (timestamps, counters, UUIDs) embedded in messages
+- Keep non-variable parts exact for safety (avoid over-filtering)
+-->
+
 ## Active Ignores
 
 - "Health check passed" - Reason: routine automated check, only failures need attention - Last seen: 2026-04-20T14:30:00Z
