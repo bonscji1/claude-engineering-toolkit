@@ -83,6 +83,9 @@ def parse_ignore_list(file_path: str) -> Tuple[List[str], List[str]]:
     active_ignores = []
     disabled_ignores = []
 
+    # Track patterns to detect duplicates
+    seen_active_patterns = {}
+
     # Split by sections
     sections = re.split(r'^## ', content, flags=re.MULTILINE)
 
@@ -91,12 +94,24 @@ def parse_ignore_list(file_path: str) -> Tuple[List[str], List[str]]:
             # Extract active ignore patterns
             # Format: - "message text" - Reason: reason - Last seen: timestamp
             # Use greedy matching with specific timestamp pattern to handle messages containing " - Reason:"
+            line_num = 0
             for line in section.split('\n'):
+                line_num += 1
                 match = re.match(r'^- "(.+)" - Reason: (.+) - Last seen: (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)$', line)
                 if match:
                     ignore_text = match.group(1)
                     # Normalize ignore list entry (strip threads, session IDs, etc.)
                     ignore_text_normalized = normalize_message(ignore_text)
+
+                    # Check for duplicates
+                    if ignore_text_normalized in seen_active_patterns:
+                        print(f"Warning: Duplicate ignore pattern in {file_path}:", file=sys.stderr)
+                        print(f"  Pattern: {ignore_text_normalized}", file=sys.stderr)
+                        print(f"  First occurrence: line {seen_active_patterns[ignore_text_normalized]}", file=sys.stderr)
+                        print(f"  Duplicate at: line {line_num}", file=sys.stderr)
+                    else:
+                        seen_active_patterns[ignore_text_normalized] = line_num
+
                     active_ignores.append(ignore_text_normalized)
 
         elif section.startswith('Disabled Ignores'):

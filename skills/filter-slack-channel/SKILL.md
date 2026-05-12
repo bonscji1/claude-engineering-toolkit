@@ -480,6 +480,12 @@ User can either:
 - **Select "Finished"** → Exit loop, proceed to step e
 - **Type in "Other" field** → Parse as command text
 
+**Re-prompting behavior:**
+- If user selects "Choose issues to ignore" WITHOUT typing text in the Other field, prompt again with a clearer request for the specific command format
+- This is expected behavior to ensure clear intent - better to re-prompt than assume what the user wants to ignore
+- Use a second `AskUserQuestion` with options: "Type command below" and "Skip - don't add any"
+- This two-step interaction provides better UX than failing silently or showing an error
+
 Expected text patterns (from "Choose issues" selection or Other field):
 - Single: `1. testing noise`
 - Multiple (comma-separated): `1. testing noise, 3. known issue`
@@ -622,3 +628,17 @@ Specific error scenarios:
 - **Don't skip channels silently** - always report what happened
 - **Parse flexibly**: Accept various input formats - comma-separated, multi-line, different spacing
 - **Validate input**: Check message numbers are in valid range before processing
+
+## Optional: Self-Improvement Review
+
+After completing the skill, use AskUserQuestion to ask the user if they want to run the self-improvement review. If they decline, skip it entirely.
+
+If they accept, reflect on your execution:
+
+- Did anything fail, feel awkward, or require unnecessary retries?
+- Were you missing context that CLAUDE.md or another project doc should have provided?
+- Is there a step in this skill that was unclear, redundant, or in the wrong order?
+
+If you identify a concrete improvement, present it as a **diff to the relevant file** (skill definition, CLAUDE.md, AGENTS.md, etc.) and offer to apply it. Do NOT just list observations — every finding must come with an actionable diff.
+Do not apply changes without approval.
+If nothing stands out, say so briefly and move on — do not force feedback.
