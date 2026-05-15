@@ -590,7 +590,7 @@ rm -f "$TEMP_FILE"
 
 Then move to the next channel (if any) and repeat steps a-f.
 
-**After processing all channels, the skill completes silently. Do not show a summary.**
+**After processing all channels, move to the self-improvement review section. Do not show a processing summary.**
 
 ## Error Handling
 
@@ -629,9 +629,9 @@ Specific error scenarios:
 - **Parse flexibly**: Accept various input formats - comma-separated, multi-line, different spacing
 - **Validate input**: Check message numbers are in valid range before processing
 
-## Optional: Self-Improvement Review
+## Self-Improvement Review (Ask First)
 
-After completing the skill, use AskUserQuestion to ask the user if they want to run the self-improvement review. If they decline, skip it entirely.
+**REQUIRED:** Use AskUserQuestion to ask the user if they want to run the self-improvement review. Only skip the review if they decline.
 
 If they accept, reflect on your execution:
 
