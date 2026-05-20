@@ -505,6 +505,22 @@ Expected text patterns (from "Choose issues" selection or Other field):
    - Regex: `(\d+)\.\s*([^,\n]+?)(?:,|\n|$)`
    - This extracts: (number, reason) tuples
    - Trim whitespace from each reason
+3. **Pattern detection** (when multiple messages selected):
+   - If 3+ messages are selected, analyze their text for common patterns
+   - Common patterns to detect:
+     - Same prefix/suffix with variable content (e.g., deployment notifications with different commit hashes)
+     - Same error type with different IDs/values (e.g., "record 'X' not found" where X varies)
+     - Same service name with different metadata (e.g., Kafka disconnections with different broker IDs)
+   - If a strong pattern is detected (80%+ similarity in structure):
+     - Show the detected pattern with wildcards replacing variable parts
+     - Ask user: "These messages follow a similar pattern. Would you like to create a wildcarded ignore entry instead?"
+     - Options: "Use wildcard pattern" | "Add each individually"
+     - If "Use wildcard pattern": create single wildcarded entry with a combined reason
+     - If "Add each individually": continue with normal flow
+   - Pattern detection examples:
+     - Messages: `"@: :green_jenkins_circle: SaaS file *notifications-test* deployment to environment *insights-production*: Success - ...commit/abc123..."`, `"@: :green_jenkins_circle: SaaS file *notifications-test* deployment to environment *insights-production*: Success - ...commit/def456..."`
+     - Suggested pattern: `"@: :green_jenkins_circle: SaaS file *notifications-test* deployment to environment *insights-production*: Success - *"`
+     - Reason: Combine all user-provided reasons, e.g., "Deployment success notifications are informational noise"
 4. For each (number, reason) pair:
    - Validate number is in range [1, total_messages]
    - Get message text from the full message list (1-based index)
@@ -623,6 +639,7 @@ Specific error scenarios:
 - **Sort messages**: By count (descending) then timestamp (descending) for better visibility of recurring issues
 - **Preserve exact message text**: When adding to ignore lists, strip `[thread:...]` but preserve everything else (wildcards can be added manually after)
 - **Wildcard patterns**: Users can manually edit ignore list files to replace variable parts with `*` for flexible matching. Examples: `"Mcp session not found: *"` matches any session, `"@Sentry: [*] Error"` matches error from any service
+- **Pattern detection**: When 3+ similar messages are selected, automatically detect patterns and offer to create a single wildcarded ignore entry instead of adding each individually. This reduces noise more effectively.
 - **Use UTC timestamps consistently**
 - **Sanitize channel names** consistently for file paths
 - **Don't skip channels silently** - always report what happened
