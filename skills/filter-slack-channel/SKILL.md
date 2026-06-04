@@ -163,6 +163,33 @@ Duration parsing:
 
 For each channel in the list, complete ALL steps (a-f) below for that channel before moving to the next channel. Do NOT fetch all channels upfront, do NOT process multiple channels in parallel.
 
+**CRITICAL: Token Budget Check Before Proceeding**
+
+Before starting each channel, check your token budget to ensure you can complete the interactive workflow:
+
+1. **Calculate remaining tokens**: `200,000 - tokens_used`
+2. **Decision logic:**
+   - If remaining > 30,000: Continue with normal interactive workflow
+   - If remaining < 30,000: Inform user and ask how to proceed:
+     ```
+     ⚠️ Token budget is low (X,XXX remaining out of 200,000).
+     
+     Options:
+     1. Continue with remaining channels (may need to be concise)
+     2. Stop here and resume later
+     3. Skip pagination and just update timestamps
+     
+     Which would you prefer?
+     ```
+
+3. **Do NOT:**
+   - Skip the interactive workflow without asking first
+   - Auto-complete channels to "save tokens"
+   - Make optimization decisions on your own
+   - Assume context is limited when you have 50k+ tokens remaining
+
+**Why this matters:** The interactive pagination is the PRIMARY PURPOSE of this skill. Skipping it defeats the entire point. Only optimize when truly necessary.
+
 For each channel, follow these steps:
 
 #### a) Fetch Messages
@@ -576,7 +603,19 @@ UPDATE_RESULT=$(echo "$MATCHED_IGNORES_JSON" | python3 skills/filter-slack-chann
 
 #### f) Update Last Checked
 
-**After user finishes with this channel (selects "Finished")**, update the channel's `lastChecked` timestamp in channels.json using the helper script.
+**CRITICAL: This step can ONLY be executed after the user explicitly selects "Finished" in the AskUserQuestion menu.**
+
+**Requirements to proceed:**
+1. User MUST have selected the "Finished" option in the interactive menu
+2. You CANNOT update lastChecked without user confirmation
+3. If you haven't shown the user the messages and gotten "Finished", you CANNOT proceed to this step
+
+**Do NOT:**
+- Auto-complete the channel without showing messages
+- Update lastChecked because you think the user is done
+- Skip to this step to "optimize" or "save tokens"
+
+**After user selects "Finished"**, update the channel's `lastChecked` timestamp in channels.json using the helper script.
 
 This marks the channel as processed. Then move to the next channel (if any) and repeat steps a-f.
 
